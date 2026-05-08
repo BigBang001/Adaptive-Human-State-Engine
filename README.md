@@ -5,19 +5,20 @@ Real-time multimodal cognitive state inference + adaptive productivity coaching 
 
 ## Project Structure
 
+```text
 ahse/
-├── api.py            ← FastAPI app (WebSocket + REST)
-├── engine.py         ← Core inference loop (in-memory state)
-├── fusion.py         ← Weighted multimodal fusion + productivity
-├── behavior.py       ← Keyboard/mouse behavioral tracker
-├── sentiment.py      ← VADER text sentiment
-├── train.py          ← SVM model trainer (HOG + CK+ dataset)
-├── model.pkl         ← Trained SVM emotion classifier (shows up after training)
-├── sessions/         ← Auto-saved session JSON exports
+├── api.py             ← FastAPI app (WebSocket + REST)
+├── engine.py          ← Core inference loop (in-memory state)
+├── fusion.py          ← Weighted multimodal fusion + productivity
+├── behavior.py        ← Keyboard/mouse behavioral tracker
+├── sentiment.py       ← VADER text sentiment
+├── train.py           ← SVM model trainer (HOG + CK+ dataset)
+├── model.pkl          ← Trained SVM emotion classifier
+├── sessions/          ← Auto-saved session JSON exports
 └── static/
-    ├── index.html    ← Main dashboard (WebSocket-driven)
-    └── analytics.html← Analytics dashboard
-
+    ├── index.html     ← Main dashboard (WebSocket-driven)
+    └── analytics.html ← Analytics dashboard
+```
 
 ## Setup
 
