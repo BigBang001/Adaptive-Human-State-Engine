@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>AHSE — Analytics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#080b10;--bg2:#0d1117;--bg3:#131920;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --text:#cdd6f4;--muted:rgba(205,214,244,0.38);
+  --font:'Syne',sans-serif;--mono:'JetBrains Mono',monospace;
+  --focused:#89b4fa;--engaged:#a6e3a1;--calm:#94e2d5;
+  --stressed:#f38ba8;--distracted:#fab387;--fatigued:#cba6f7;--unknown:#585b70;
+  --accent:var(--unknown);--glow:rgba(88,91,112,0.1);
+}
+body.Focused{--accent:var(--focused);--glow:rgba(137,180,250,0.1);}
+body.Engaged{--accent:var(--engaged);--glow:rgba(166,227,161,0.1);}
+body.Calm{--accent:var(--calm);--glow:rgba(148,226,213,0.1);}
+body.Stressed{--accent:var(--stressed);--glow:rgba(243,139,168,0.14);}
+body.Distracted{--accent:var(--distracted);--glow:rgba(250,179,135,0.1);}
+body.Fatigued{--accent:var(--fatigued);--glow:rgba(203,166,247,0.1);}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 90% 50% at 50% -5%,var(--glow),transparent 60%);pointer-events:none;z-index:0;transition:background .7s;}
+.page{position:relative;z-index:1;max-width:1440px;margin:0 auto;padding:0 24px 48px;}
+
+header{display:flex;align-items:center;justify-content:space-between;padding:20px 0 16px;border-bottom:1px solid var(--border);margin-bottom:24px;gap:12px;flex-wrap:wrap;}
+.logo-wrap{display:flex;align-items:center;gap:12px;}
+.logo-badge{width:38px;height:38px;border-radius:9px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 30%,transparent),transparent);border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;color:var(--accent);transition:all .5s;}
+.logo-text{font-size:.65rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);}
+nav{display:flex;gap:4px;}
+nav a{padding:6px 14px;border-radius:6px;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-decoration:none;transition:all .2s;}
+nav a:hover{color:var(--text);background:rgba(255,255,255,.05);}
+nav a.active{color:var(--accent);background:rgba(255,255,255,.06);}
+.engine-pill{display:inline-flex;align-items:center;gap:7px;padding:5px 14px;border-radius:100px;background:var(--bg3);border:1px solid var(--border);font-size:.65rem;letter-spacing:.18em;text-transform:uppercase;font-family:var(--mono);}
+.engine-pill .epd{width:7px;height:7px;border-radius:50%;background:var(--unknown);}
+.engine-pill.RUNNING .epd{background:var(--engaged);box-shadow:0 0 8px var(--engaged);animation:blink 1.4s ease-in-out infinite;}
+.engine-pill.PAUSED  .epd{background:var(--distracted);}
+.engine-pill.STOPPED .epd{background:var(--stressed);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+.row{display:grid;gap:14px;margin-bottom:14px;}
+.r4{grid-template-columns:repeat(4,1fr);}
+.r2{grid-template-columns:1fr 1fr;}
+.r3{grid-template-columns:repeat(3,1fr);}
+.r1{grid-template-columns:1fr;}
+@media(max-width:920px){.r4,.r3{grid-template-columns:1fr 1fr;}.r2{grid-template-columns:1fr;}}
+@media(max-width:500px){.r4,.r3,.r2{grid-template-columns:1fr;}}
+
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:20px 22px;transition:border-color .5s;}
+.clabel{font-size:.6rem;text-transform:uppercase;letter-spacing:.22em;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.clabel::before{content:'';width:14px;height:1px;background:var(--accent);transition:background .5s;flex-shrink:0;}
+
+.stat-big{font-size:2rem;font-weight:800;font-family:var(--mono);margin-top:4px;line-height:1;}
+.chart-wrap{position:relative;height:180px;margin-top:10px;}
+.chart-wrap.sm{height:140px;}
+.chart-wrap.lg{height:220px;}
+
+/* STATE TIMELINE CUSTOM */
+#state-timeline-canvas{width:100%!important;}
+
+/* HEATMAP */
+.heatmap{display:grid;grid-template-columns:repeat(24,1fr);gap:3px;margin-top:10px;}
+.hm-cell{height:20px;border-radius:3px;background:rgba(255,255,255,.04);transition:background .3s;}
+.hm-hour{font-size:.5rem;font-family:var(--mono);color:var(--muted);text-align:center;margin-top:4px;}
+
+table{width:100%;border-collapse:collapse;font-size:.76rem;}
+thead tr{border-bottom:1px solid var(--border);}
+th{padding:8px 12px;text-align:left;font-size:.6rem;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);font-weight:400;}
+td{padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.04);}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:rgba(255,255,255,.02);}
+
+footer{margin-top:32px;padding-top:16px;border-top:1px solid var(--border);text-align:center;font-size:.6rem;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);}
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.07);border-radius:3px;}
+</style>
+</head>
+<body class="Unknown">
+<div class="page">
+  <header>
+    <div class="logo-wrap">
+      <div class="logo-badge">AH</div>
+      <div><div class="logo-text">Adaptive Human State Engine</div></div>
+    </div>
+    <nav>
+      <a href="/">Dashboard</a>
+      <a href="/analytics" class="active">Analytics</a>
+    </nav>
+    <div id="epill" class="engine-pill IDLE"><span class="epd"></span><span id="etxt">IDLE</span></div>
+  </header>
+
+  <!-- Summary stats -->
+  <div class="row r4">
+    <div class="card">
+      <div class="clabel">Session Duration</div>
+      <div class="stat-big" id="s-time">—</div>
+    </div>
+    <div class="card">
+      <div class="clabel">Dominant State</div>
+      <div class="stat-big" id="s-dom" style="color:var(--accent);">—</div>
+    </div>
+    <div class="card">
+      <div class="clabel">Stress Spikes</div>
+      <div class="stat-big" id="s-stress" style="color:var(--stressed);">—</div>
+    </div>
+    <div class="card">
+      <div class="clabel">Focus Score</div>
+      <div class="stat-big" id="s-focus" style="color:var(--focused);">—</div>
+    </div>
+  </div>
+
+  <!-- Charts row 1 -->
+  <div class="row r2">
+    <div class="card">
+      <div class="clabel">Live State Level Timeline</div>
+      <div class="chart-wrap"><canvas id="c-timeline"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="clabel">Productivity + HSI Over Time</div>
+      <div class="chart-wrap"><canvas id="c-prod"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Charts row 2 -->
+  <div class="row r3">
+    <div class="card">
+      <div class="clabel">State Distribution</div>
+      <div class="chart-wrap"><canvas id="c-dist"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="clabel">Idle Time History</div>
+      <div class="chart-wrap"><canvas id="c-idle"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="clabel">Typing Speed History</div>
+      <div class="chart-wrap"><canvas id="c-typing"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Live history from /history endpoint -->
+  <div class="row r1">
+    <div class="card">
+      <div class="clabel">Sentiment Over Time</div>
+      <div class="chart-wrap"><canvas id="c-sent"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Stress bar -->
+  <div class="row r1">
+    <div class="card">
+      <div class="clabel">Stress / Fatigue Events</div>
+      <div class="chart-wrap sm"><canvas id="c-stress"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Past sessions -->
+  <div class="row r1">
+    <div class="card">
+      <div class="clabel">Past Sessions</div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr>
+            <th>Session ID</th><th>Duration</th><th>Dominant</th>
+            <th>Stress Spikes</th><th>Focus</th><th>Snapshots</th>
+          </tr></thead>
+          <tbody id="sess-tbody">
+            <tr><td colspan="6" style="color:var(--muted);padding:16px 12px;">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <footer>AHSE v3.0 &nbsp;·&nbsp; Analytics Dashboard</footer>
+</div>
+
+<script>
+Chart.defaults.color = 'rgba(205,214,244,.3)';
+Chart.defaults.borderColor = 'rgba(255,255,255,.04)';
+
+const COL = {Focused:'#89b4fa',Engaged:'#a6e3a1',Calm:'#94e2d5',Stressed:'#f38ba8',Distracted:'#fab387',Fatigued:'#cba6f7',Unknown:'#585b70'};
+const SLVL = {Focused:5,Engaged:4,Calm:3,Distracted:2,Stressed:1,Fatigued:0,Unknown:2};
+
+function mkLine(id, color, min=0, max=100, datasets) {
+  const ds = datasets || [{
+    data:[], fill:true, borderColor:color, backgroundColor:color+'18',
+    tension:.42, pointRadius:2, borderWidth:2
+  }];
+  return new Chart(document.getElementById(id).getContext('2d'), {
+    type:'line',
+    data:{labels:[], datasets:ds},
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:{duration:200},
+      plugins:{
+        legend:{display:!!datasets, labels:{font:{family:'JetBrains Mono,monospace',size:9},boxWidth:10,padding:10}},
+        tooltip:{backgroundColor:'rgba(13,17,23,.92)',borderColor:'rgba(255,255,255,.08)',borderWidth:1,
+          titleFont:{family:'JetBrains Mono,monospace',size:10},bodyFont:{family:'JetBrains Mono,monospace',size:10}}
+      },
+      scales:{
+        x:{ticks:{maxTicksLimit:8,font:{family:'JetBrains Mono,monospace',size:9}},grid:{color:'rgba(255,255,255,.03)'}},
+        y:{min,max,ticks:{font:{family:'JetBrains Mono,monospace',size:9}},grid:{color:'rgba(255,255,255,.03)'}}
+      }
+    }
+  });
+}
+
+const cTimeline = mkLine('c-timeline','#cba6f7',0,5);
+const cProd     = mkLine('c-prod', null, 0, 100, [
+  {label:'Productivity',data:[],fill:true,borderColor:'#89b4fa',backgroundColor:'rgba(137,180,250,.1)',tension:.42,pointRadius:2,borderWidth:2},
+  {label:'HSI×100',     data:[],fill:false,borderColor:'rgba(166,227,161,.6)',tension:.42,pointRadius:0,borderWidth:1.5,borderDash:[4,4]}
+]);
+const cIdle     = mkLine('c-idle',   '#fab387',0,120);
+const cTyping   = mkLine('c-typing', '#a6e3a1',0,10);
+const cStress   = mkLine('c-stress', '#f38ba8',0,1);
+const cSent     = mkLine('c-sent',   '#94e2d5',-1,1);
+
+let distChart = null;
+
+function fmtTime(ts) {
+  return new Date(ts * 1000).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+function addPt(chart, val, max=80) {
+  const t = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  chart.data.labels.push(t);
+  chart.data.datasets[0].data.push(val);
+  if (chart.data.labels.length > max) {chart.data.labels.shift(); chart.data.datasets[0].data.shift();}
+  chart.update('none');
+}
+
+// Load full history from /history endpoint and seed charts
+async function loadLiveHistory() {
+  try {
+    const {history=[]} = await fetch('/history?limit=80').then(r => r.json());
+    if (!history.length) return;
+
+    // Clear and reseed charts from history
+    [cTimeline, cProd, cIdle, cTyping, cStress, cSent].forEach(c => {
+      c.data.labels = [];
+      c.data.datasets.forEach(ds => ds.data = []);
+    });
+
+    history.forEach(snap => {
+      const t = fmtTime(snap.ts || snap.timestamp);
+      const p = snap.productivity || {};
+      const b = snap.behavior || {};
+      cTimeline.data.labels.push(t); cTimeline.data.datasets[0].data.push(SLVL[snap.state]??2);
+      cProd.data.labels.push(t);
+      cProd.data.datasets[0].data.push(p.productivity_score||0);
+      cProd.data.datasets[1].data.push((p.hsi||0)*100);
+      cIdle.data.labels.push(t);    cIdle.data.datasets[0].data.push(b.idle_time||0);
+      cTyping.data.labels.push(t);  cTyping.data.datasets[0].data.push(b.typing_speed||0);
+      cStress.data.labels.push(t);  cStress.data.datasets[0].data.push((snap.state==='Stressed'||snap.state==='Fatigued')?1:0);
+      cSent.data.labels.push(t);    cSent.data.datasets[0].data.push(snap.sentiment??0);
+    });
+
+    [cTimeline, cProd, cIdle, cTyping, cStress, cSent].forEach(c => c.update('none'));
+  } catch (_) {}
+}
+
+async function poll() {
+  try {
+    const [pred, sess] = await Promise.all([
+      fetch('/predict').then(r => r.json()),
+      fetch('/session').then(r => r.json())
+    ]);
+    const p = pred.productivity || {}, b = pred.behavior || {};
+
+    document.body.className = pred.state || 'Unknown';
+    const pill = document.getElementById('epill');
+    pill.className = 'engine-pill ' + (pred.engine_state || 'IDLE');
+    document.getElementById('etxt').textContent = pred.engine_state || 'IDLE';
+
+    if (sess && !sess.error) {
+      document.getElementById('s-time').textContent   = sess.session_time || '—';
+      document.getElementById('s-dom').textContent    = sess.dominant_state || '—';
+      document.getElementById('s-stress').textContent = sess.stress_spikes ?? '—';
+      document.getElementById('s-focus').textContent  = sess.focus_score != null ? ((sess.focus_score)*100).toFixed(0)+'%' : '—';
+    }
+
+    if (pred.engine_state === 'RUNNING' && pred.state && pred.state !== 'Unknown') {
+      addPt(cProd,     p.productivity_score||0);
+      cProd.data.datasets[1].data.push((p.hsi||0)*100);
+      if (cProd.data.datasets[1].data.length > 80) cProd.data.datasets[1].data.shift();
+      cProd.update('none');
+      addPt(cTimeline, SLVL[pred.state]??2);
+      addPt(cIdle,     b.idle_time||0);
+      addPt(cTyping,   b.typing_speed||0);
+      addPt(cStress,   pred.state==='Stressed'||pred.state==='Fatigued'?1:0);
+      addPt(cSent,     pred.sentiment??0);
+    }
+  } catch (_) {}
+}
+
+async function loadSessions() {
+  try {
+    const {sessions=[]} = await fetch('/session/history').then(r => r.json());
+    const tbody = document.getElementById('sess-tbody');
+    if (!sessions.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);padding:16px 12px;">No sessions recorded yet</td></tr>';
+      return;
+    }
+    tbody.innerHTML = sessions.map(s => `<tr>
+      <td style="font-family:var(--mono);font-size:.68rem;color:var(--muted);">${s.session_id||'—'}</td>
+      <td>${s.session_time||'—'}</td>
+      <td style="color:${COL[s.dominant_state]||'#888'};font-weight:600;">${s.dominant_state||'—'}</td>
+      <td style="color:var(--stressed);">${s.stress_spikes??'—'}</td>
+      <td style="color:var(--focused);">${s.focus_score!=null?((s.focus_score)*100).toFixed(0)+'%':'—'}</td>
+      <td style="color:var(--muted);">${s.total_snapshots??'—'}</td>
+    </tr>`).join('');
+
+    // Distribution donut from session history
+    const states = Object.keys(COL).filter(s => s !== 'Unknown');
+    const counts = sessions.reduce((acc, s) => {
+      if (s.dominant_state) acc[s.dominant_state] = (acc[s.dominant_state]||0) + 1;
+      return acc;
+    }, {});
+    const vals = states.map(s => counts[s]||0);
+    if (!distChart) {
+      distChart = new Chart(document.getElementById('c-dist').getContext('2d'), {
+        type:'doughnut',
+        data:{labels:states, datasets:[{data:vals, backgroundColor:states.map(s=>COL[s]), borderWidth:0, borderRadius:4}]},
+        options:{responsive:true, maintainAspectRatio:false, cutout:'65%',
+          plugins:{legend:{position:'right',labels:{font:{family:'JetBrains Mono,monospace',size:10},padding:10,boxWidth:10}}},
+          tooltip:{backgroundColor:'rgba(13,17,23,.92)',borderColor:'rgba(255,255,255,.08)',borderWidth:1}}
+      });
+    } else {
+      distChart.data.datasets[0].data = vals;
+      distChart.update();
+    }
+  } catch (_) {}
+}
+
+loadLiveHistory();
+poll();
+loadSessions();
+setInterval(poll, 2000);
+setInterval(loadSessions, 15000);
+setInterval(loadLiveHistory, 30000); // re-sync history periodically
+</script>
+</body>
+</html>
