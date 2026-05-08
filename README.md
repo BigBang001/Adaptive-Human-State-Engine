@@ -1,7 +1,7 @@
-# AHSE: Adaptive Human State Engine
+<h1 align="center"> AHSE: Adaptive Human State Engine </h><br>
 
-Real-time multimodal cognitive state inference + adaptive productivity coaching engine.
-
+<h4 align="center"> Real-time multimodal cognitive state inference + adaptive productivity coaching engine.<br> </h4>
+<img width="1803" height="813" alt="Screenshot 2026-04-29 204944" src="https://github.com/user-attachments/assets/04e2224b-1a91-415b-a489-b5b991f120ce" /><br>
 
 ## Project Structure
 
